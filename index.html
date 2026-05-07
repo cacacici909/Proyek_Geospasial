@@ -8,6 +8,44 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <style>
+        /* Pengaturan khusus Tampilan Mobile (HP) */
+@media (max-width: 768px) {
+    .webgis-container {
+        flex-direction: column; /* Sidebar dan Peta jadi atas-bawah, bukan kiri-kanan */
+    }
+
+    .sidebar {
+        width: 100% !important; /* Lebar sidebar penuh */
+        height: 40vh; /* Sidebar hanya memakan 40% tinggi layar */
+        order: 2; /* Sidebar pindah ke bawah peta */
+        padding: 15px;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.1); /* Bayangan pindah ke atas */
+        border-left: none;
+        border-top: 3px solid #4B6CFF;
+    }
+
+    .map-container {
+        width: 100%;
+        height: 60vh; /* Peta memakan 60% tinggi layar */
+        order: 1; /* Peta tampil di atas */
+    }
+
+    .landing-title {
+        font-size: 24px; /* Kecilkan judul di HP */
+    }
+
+    .photo-collage-container {
+        height: 350px; /* Sesuaikan tinggi kolase di HP */
+    }
+
+    .collage-photo {
+        width: 200px; /* Kecilkan foto di HP agar tidak meluber */
+    }
+    
+    .photo-center {
+        width: 220px;
+    }
+}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -466,9 +504,17 @@
     <script>
         // ======================== LANDING PAGE LOGIC ========================
         function enterMap() {
-            document.getElementById('landingPage').classList.add('slide-up');
-        }
-
+    const lp = document.getElementById('landingPage');
+    
+    // 1. Jalankan animasi naik (slide-up)
+    lp.classList.add('slide-up');
+    
+    // 2. Beri jeda 800ms (sesuai durasi transisi CSS) 
+    // lalu hilangkan elemen agar tidak menghalangi klik di HP
+    setTimeout(() => {
+        lp.style.display = 'none';
+    }, 800);
+}
         let touchStartY = 0;
         let touchEndY = 0;
         const landingPage = document.getElementById('landingPage');
