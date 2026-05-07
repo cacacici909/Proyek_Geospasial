@@ -492,11 +492,11 @@
         // Gunakan 'var' agar variabel map bersifat global dan bisa diakses tombol zoom
         var map = L.map('map', { 
             zoomControl: false 
-        }).setView([-6.962262, 110.448152], 15);
+        }).setView([-6.962262, 110.448152], 13);
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 17 }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
 
         map.createPane('schoolPane');
         map.getPane('schoolPane').style.zIndex = 650; 
