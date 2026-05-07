@@ -208,11 +208,11 @@
                 rgba(220, 235, 255, 0.96) 100%
             );
             backdrop-filter: blur(18px);
-            padding: 20px 18px;
-            box-shadow: 0 0 28px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
             overflow-y: auto;
             border-left: 1px solid rgba(255, 255, 255, 0.6);
-            z-index: 1001;
+            z-index: 1000;
             color: #2c3e50;
         }
 
@@ -542,7 +542,7 @@
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 17 }).addTo(map);
 
         map.createPane('schoolPane');
         map.getPane('schoolPane').style.zIndex = 650; 
