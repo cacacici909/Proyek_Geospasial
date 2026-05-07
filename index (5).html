@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cakupan Layanan Pendidikan - Kelompok SIG</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #00C4CC 0%, #4B6CFF 50%, #7B3FFC 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: #1f2933;
+        }
+
+        /* ==========================================================================
+           LANDING PAGE / PROFIL KELOMPOK STYLES
+           ========================================================================== */
+        .landing-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #00C4CC 0%, #4B6CFF 50%, #7B3FFC 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .landing-page.slide-up {
+            transform: translateY(-100%);
+        }
+
+        .landing-content {
+            padding: 20px;
+            border-radius: 24px;
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .landing-title {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .landing-subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 500;
+            line-height: 1.5;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.2);
+        }
+
+        .photo-collage-container {
+            position: relative;
+            width: 100%;
+            height: 550px;
+            margin-bottom: 30px;
+        }
+
+        .collage-photo {
+            position: absolute;
+            width: 380px;
+            padding: 15px 15px 35px 15px;
+            background: #fff;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            border-radius: 6px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+
+        .collage-photo img {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            border-radius: 2px;
+            filter: sepia(5%) contrast(105%);
+        }
+
+        .photo-left { left: 5%; top: 10%; transform: rotate(-12deg) scale(0.95); z-index: 1; }
+        .photo-right { right: 5%; top: 15%; transform: rotate(8deg) scale(0.95); z-index: 2; }
+        .photo-center {
+            left: 50%; top: 0%; width: 440px; margin-left: -220px;
+            transform: rotate(-2deg); z-index: 3; box-shadow: 0 25px 50px rgba(0,0,0,0.35);
+        }
+        .photo-center img { height: 320px; }
+
+        .collage-photo:hover {
+            transform: scale(1.1) rotate(0deg) !important;
+            z-index: 100;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+        }
+
+        .swipe-btn {
+            background: white;
+            color: #4B6CFF;
+            padding: 15px 50px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            animation: pulse 2s infinite;
+            z-index: 10;
+        }
+
+        .swipe-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            color: #2a4bde;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+
+        .arrow-up {
+            width: 0; height: 0; 
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 10px solid #4B6CFF;
+            animation: bounce 1.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-8px);}
+            60% {transform: translateY(-4px);}
+        }
+
+        /* ==========================================================================
+           WEBGIS STYLES (THEME: PROFESSIONAL BLUE)
+           ========================================================================== */
+        .webgis-container { display: flex; height: 100vh; position: relative; flex-direction: row-reverse;}
+
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.98) 0%, 
+                rgba(240, 248, 255, 0.96) 40%, 
+                rgba(220, 235, 255, 0.96) 100%
+            );
+            backdrop-filter: blur(18px);
+            padding: 20px 18px;
+            box-shadow: 0 0 28px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+            border-left: 1px solid rgba(255, 255, 255, 0.6);
+            z-index: 1001;
+            color: #2c3e50;
+        }
+
+        .sidebar h1 {
+            color: #1a4b8c;
+            margin-bottom: 16px;
+            font-size: 22px;
+            text-align: center;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+            white-space: normal;
+            line-height: 1.3;
+        }
+
+        .sidebar h1 span {
+            display: block;
+            font-size: 11px;
+            color: #4a90e2;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 14px;
+            box-shadow: 0 4px 12px rgba(0, 80, 200, 0.08);
+            border: 1px solid rgba(150, 200, 255, 0.4);
+            padding: 10px 12px;
+        }
+
+        .control-group h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-group h3::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, rgba(74, 144, 226, 0.5), transparent);
+        }
+
+        .layer-control {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .layer-control:hover {
+            background: rgba(200, 230, 255, 0.5);
+            transform: translateX(3px);
+        }
+
+        .layer-control input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.1);
+            accent-color: #1a4b8c;
+        }
+
+        .layer-control label {
+            cursor: pointer;
+            flex: 1;
+            color: #444;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .legend { 
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .legend-section-title { 
+            font-size: 11px; 
+            color: #1a4b8c; 
+            margin: 10px 0 6px 0; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+            border-bottom: 1px solid rgba(74, 144, 226, 0.3); 
+            padding-bottom: 2px; 
+        }
+
+        .legend-item { display: flex; align-items: center; margin-bottom: 6px; font-size: 11px; color: #444; }
+        .legend-color { width: 14px; height: 14px; border-radius: 4px; margin-right: 8px; flex-shrink: 0; }
+        .legend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+        .map-container { flex: 1; position: relative; }
+        #map { height: 100%; width: 100%; }
+
+        .map-controls { 
+            position: absolute; top: 18px; right: 18px; z-index: 1000; 
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
+            border: 1px solid rgba(74, 144, 226, 0.4);
+            padding: 8px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            color: #1a4b8c;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+        }
+
+        .control-btn:hover { 
+            background: #1a4b8c;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .search-box {
+            width: 100%; padding: 8px 12px;
+            border: 1px solid rgba(74, 144, 226, 0.4);
+            border-radius: 999px; font-size: 12px;
+            outline: none; transition: 0.2s;
+        }
+
+        .search-box:focus { 
+            border-color: #1a4b8c; 
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2); 
+        }
+
+        .filter-btn {
+            width: 100%; background-color: #1a4b8c; 
+            color: white; padding: 10px; border: none;
+            border-radius: 8px; cursor: pointer;
+            font-weight: bold; font-size: 13px; margin-top: 8px;
+            transition: 0.2s;
+        }
+        .filter-btn:hover { background-color: #0d2a52; }
+
+        .leaflet-popup-content-wrapper { 
+            border-radius: 14px; 
+            border-top: 4px solid #1a4b8c;
+        }
+
+        .leaflet-container a { color: #1a4b8c; font-weight: bold; }
+        
+        .label-rw-text {
+            background: transparent !important; border: none !important;
+            font-size: 14px; font-weight: 800; color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .school-link {
+            color: #1a4b8c; text-decoration: none; border-bottom: 1px dashed #1a4b8c; cursor: pointer;
+        }
+        .school-link:hover { color: #4a90e2; border-bottom: 1px solid #4a90e2; }
+
+        @media (max-width: 768px) {
+            .webgis-container { flex-direction: column; }
+            .sidebar { width: 100%; height: 40%; order: 2; border-left: none; border-top: 2px solid #1a4b8c; }
+            .map-container { height: 60%; order: 1; }
+            .sidebar h1 { font-size: 18px; }
+            .map-controls { top: 10px; right: 10px; max-width: 150px; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="landing-page" id="landingPage">
+        <div class="landing-content">
+            <h1 class="landing-title">Kelompok 2 Proyek Geospasial</h1>
+            <p class="landing-subtitle">Analisis Spasial Cakupan Layanan Pendidikan<br>Kelurahan Kaligawe, Kota Semarang</p>
+            
+            <div class="photo-collage-container">
+                <div class="collage-photo photo-left">
+                    <img src="foto kelompok.jpeg" alt="Foto Kiri">
+                </div>
+                <div class="collage-photo photo-right">
+                    <img src="foto kelompok 2.jpeg" alt="Foto Kanan">
+                </div>
+                <div class="collage-photo photo-center">
+                    <img src="foto kelompok 3.jpeg" alt="Foto Tengah">
+                </div>
+            </div>
+
+            <button class="swipe-btn" onclick="enterMap()">
+                <div class="arrow-up"></div>
+                Mulai Jelajahi Peta
+            </button>
+            <p style="margin-top: 20px; font-size: 12px; opacity: 0.8; color: white; font-weight: 500;">Klik tombol atau Geser ke Atas (Mobile)</p>
+        </div>
+    </div>
+
+    <div class="webgis-container">
+        <div class="sidebar">
+            <h1>🏫 Cakupan Layanan Pendidikan<span>Kelurahan Kaligawe, Kota Semarang</span></h1>
+            
+            <div class="control-group">
+                <h3>🔍 Pencarian Sekolah</h3>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" class="search-box" id="searchInput" placeholder="Ketik Nama Sekolah">
+                    <button class="control-btn" onclick="searchSchool()" style="padding: 0 10px; font-size: 14px; flex-shrink: 0;">Cari</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🗂️ Layer Peta</h3>
+                <div class="layer-control">
+                    <input type="checkbox" id="kaligaweGeoJsonLayer" checked> 
+                    <label for="kaligaweGeoJsonLayer">Batas RW Kelurahan</label>
+                </div>
+                
+                <div class="layer-control" style="background: rgba(255,255,255,0.5); border: 1px dashed #d35400;">
+                    <input type="checkbox" id="pemerataanLayerInput"> 
+                    <label for="pemerataanLayerInput"><b>Cakupan Pemerataan SD</b></label>
+                </div>
+                
+                <div class="layer-control" style="background: rgba(255,255,255,0.5); border: 1px dashed #000080;">
+                    <input type="checkbox" id="pemerataanSMPLayerInput"> 
+                    <label for="pemerataanSMPLayerInput"><b>Cakupan Pemerataan SMP</b></label>
+                </div>
+
+                <div class="layer-control" style="background: rgba(255,255,255,0.5); border: 1px dashed #74AED4;">
+                    <input type="checkbox" id="pemerataanSMALayerInput"> 
+                    <label for="pemerataanSMALayerInput"><b>Cakupan Pemerataan SMA/SMK</b></label>
+                </div>
+
+                <div class="layer-control"><input type="checkbox" id="sdLayer" checked> <label for="sdLayer">Sekolah Dasar</label></div>
+                <div class="layer-control"><input type="checkbox" id="smpLayer" checked> <label for="smpLayer">Sekolah Menengah Pertama</label></div>
+                <div class="layer-control"><input type="checkbox" id="smaLayer" checked> <label for="smaLayer">Sekolah Menengah Atas</label></div>
+            </div>
+
+            <div class="control-group">
+                <h3>🏛️ Status Sekolah</h3>
+                <select id="statusFilter" class="search-box" style="margin-bottom: 5px;">
+                    <option value="all">Semua Status</option>
+                    <option value="Negeri">Negeri</option>
+                    <option value="Swasta">Swasta</option>
+                </select>
+                <button class="filter-btn" onclick="refreshMarkers()">Terapkan Filter</button>
+            </div>
+
+            <div class="control-group legend">
+                <h3>📋 Legenda</h3>
+                <div class="legend-section-title">Jenis Sekolah</div>
+                <div class="legend-item"><div class="legend-color" style="background: #e74c3c;"></div><span>Sekolah Dasar</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #000080;"></div><span>Sekolah Menengah Pertama</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #74AED4;"></div><span>Sekolah Menengah Atas/SMK</span></div>
+                
+                <div class="legend-section-title" style="margin-top:10px;">Status Pemerataan</div>
+                <div class="legend-grid">
+                    <div class="legend-item"><div class="legend-color" style="background: rgb(202, 252, 202);"></div><span>Baik Sekali</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: rgb(186, 222, 252);"></div><span>Baik</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: rgb(255, 235, 175);"></div><span>Cukup</span></div>
+                </div>
+                <div class="legend-item" style="margin-top: 4px;"><div class="legend-color" style="background: rgb(243, 182, 252);"></div><span>Kawasan Industri</span></div>
+                
+                <div class="legend-section-title" style="margin-top:10px;">Wilayah RW</div>
+                <div class="legend-grid">
+                    <div class="legend-item"><div class="legend-color" style="background: #FF5733;"></div><span>RW 01</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #33FF57;"></div><span>RW 02</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #3357FF;"></div><span>RW 03</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #F3FF33;"></div><span>RW 04</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #FF33F6;"></div><span>RW 05</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #33FFF6;"></div><span>RW 06</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #FFA500;"></div><span>RW 07</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #800000;"></div><span>RW 08</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #008080;"></div><span>RW 09</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #808000;"></div><span>RW 10</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-controls">
+                <button class="control-btn" onclick="zoomToKaligawe()">Zoom ke Kelurahan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ======================== LANDING PAGE LOGIC ========================
+        function enterMap() {
+            document.getElementById('landingPage').classList.add('slide-up');
+        }
+
+        let touchStartY = 0;
+        let touchEndY = 0;
+        const landingPage = document.getElementById('landingPage');
+
+        landingPage.addEventListener('touchstart', e => {
+            touchStartY = e.changedTouches[0].screenY;
+        });
+
+        landingPage.addEventListener('touchend', e => {
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchStartY - touchEndY > 50) {
+                enterMap();
+            }
+        }
+        
+        // ======================== MAP INITIALIZATION (UPDATED) ========================
+        // Gunakan 'var' agar variabel map bersifat global dan bisa diakses tombol zoom
+        var map = L.map('map', { 
+            zoomControl: false 
+        }).setView([-6.962262, 110.448152], 15);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
+
+        map.createPane('schoolPane');
+        map.getPane('schoolPane').style.zIndex = 650; 
+
+        let kaligaweLayer; 
+        let pemerataanLayer; 
+        let pemerataanSMPLayer; 
+        let pemerataanSMALayer; 
+
+        // ======================== DATA WILAYAH & PEMERATAAN ========================
+        const geoJsonDataRW = {
+            "type": "FeatureCollection",
+            "name": "batasrw",
+            "features": [
+                { "type": "Feature", "properties": { "RW": "RW 01" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44691539, -6.95824673], [110.44727821, -6.95869644], [110.44513754, -6.96051696], [110.44498346, -6.9606399], [110.44509766, -6.96092255], [110.44480201, -6.96102077], [110.44445216, -6.96113699], [110.44429886, -6.96123889], [110.44408164, -6.96128115], [110.44351915, -6.96126791], [110.44279839, -6.9613185], [110.44257334, -6.96055397], [110.44234474, -6.95991767], [110.44251915, -6.95984484], [110.44272856, -6.95978177], [110.44408758, -6.95930395], [110.44485971, -6.95896113], [110.44625344, -6.95847972], [110.44691539, -6.95824673]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 03" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44293875, -6.96179623], [110.44364566, -6.96166882], [110.44592277, -6.96111149], [110.44769464, -6.96056908], [110.44773804, -6.96052131], [110.4479325, -6.96064877], [110.44804556, -6.96136574], [110.44809612, -6.96152305], [110.44457728, -6.96221827], [110.44449329, -6.962351], [110.44319923, -6.96263383], [110.44293875, -6.96179623]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 05" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.4484484, -6.96284431], [110.44726563, -6.96307122], [110.44355676, -6.96381969], [110.44337032, -6.96320948], [110.44553021, -6.96280419], [110.44835016, -6.96224323], [110.4484484, -6.96284431]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 06" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.4484484, -6.96284431], [110.44851143, -6.9632463], [110.44856798, -6.96344854], [110.44864722, -6.96428432], [110.44661308, -6.96465509], [110.44697424, -6.96652516], [110.44645039, -6.96644078], [110.44638706, -6.96682962], [110.44630697, -6.96718381], [110.44615285, -6.9671384], [110.44556038, -6.96696584], [110.44531294, -6.96688414], [110.44505164, -6.96680242], [110.44451172, -6.96668419], [110.44383658, -6.96657485], [110.4440169, -6.96532568], [110.44355676, -6.96381969], [110.44726563, -6.96307122], [110.4484484, -6.96284431]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 08" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.45067123, -6.96391313], [110.44982686, -6.9659213], [110.44866933, -6.96564884], [110.44873833, -6.96501349], [110.44873141, -6.96479091], [110.44864722, -6.96428432], [110.45067123, -6.96391313]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 10" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44866933, -6.96564884], [110.44982686, -6.9659213], [110.44959318, -6.96646577], [110.44948385, -6.96677838], [110.44855339, -6.96647439], [110.44866933, -6.96564884]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 09" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44864722, -6.96428432], [110.44873141, -6.96479091], [110.44873833, -6.96501349], [110.44866933, -6.96564884], [110.44859383, -6.96618643], [110.44781381, -6.96607792], [110.44690961, -6.96619048], [110.44661308, -6.96465509], [110.44864722, -6.96428432]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 07" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44690961, -6.96619048], [110.44781381, -6.96607792], [110.44859383, -6.96618643], [110.44855339, -6.96647439], [110.44948385, -6.96677838], [110.44944214, -6.96689763], [110.44940098, -6.96701532], [110.44934958, -6.96718765], [110.44929658, -6.96743154], [110.44926467, -6.96765386], [110.44925337, -6.96773262], [110.44904281, -6.96772974], [110.44872004, -6.96772031], [110.4485319, -6.96772914], [110.44845412, -6.96771096], [110.44837917, -6.96769278], [110.448205, -6.96761117], [110.44804609, -6.96754766], [110.44790723, -6.96751132], [110.44778643, -6.96751118], [110.4477055, -6.96752917], [110.4475479, -6.96755613], [110.44735067, -6.96759208], [110.44717812, -6.96758283], [110.44712917, -6.96758277], [110.44699941, -6.96751026], [110.4467656, -6.96738335], [110.4465117, -6.96726546], [110.44630697, -6.96718381], [110.44645039, -6.96644078], [110.44697424, -6.96652516], [110.44690961, -6.96619048]]]] } },
+                { "type": "Feature", "properties": { "RW": "Kawasan Industri" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44691539, -6.95824673], [110.44803621, -6.9578508], [110.44951489, -6.95736406], [110.45011281, -6.95722003], [110.45075423, -6.95713032], [110.45155734, -6.95708602], [110.45155297, -6.95726217], [110.45154487, -6.95765725], [110.45153485, -6.95805996], [110.45152349, -6.95878456], [110.45150184, -6.96016517], [110.45149603, -6.9604916], [110.45148664, -6.96101881], [110.45148202, -6.96113798], [110.45146221, -6.96145012], [110.45145436, -6.96157371], [110.45142164, -6.96178934], [110.45138371, -6.96199488], [110.45135162, -6.96212251], [110.45132798, -6.96219996], [110.45130569, -6.96228033], [110.45126808, -6.96241474], [110.45122927, -6.96252759], [110.44813675, -6.95968204], [110.44727821, -6.95869644], [110.44691539, -6.95824673]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 02" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44279839, -6.9613185], [110.44351915, -6.96126791], [110.44408164, -6.96128115], [110.44429886, -6.96123889], [110.44445216, -6.96113699], [110.44509766, -6.96092255], [110.44498346, -6.9606399], [110.44727821, -6.95869644], [110.44813675, -6.95968204], [110.45122898, -6.96252759], [110.45115813, -6.96273203], [110.45099812, -6.96314352], [110.45084992, -6.96349212], [110.45067123, -6.96391313], [110.44864722, -6.96428432], [110.44856798, -6.96344854], [110.44851143, -6.9632463], [110.4484484, -6.96284431], [110.44835016, -6.96224323], [110.44821997, -6.96174648], [110.44809133, -6.96152305], [110.44804077, -6.96136574], [110.44792771, -6.96064877], [110.44773325, -6.9605213], [110.44768985, -6.96056907], [110.44591798, -6.96111148], [110.44496613, -6.96135646], [110.44436669, -6.96150151], [110.44364566, -6.96166882], [110.44293875, -6.96179623], [110.44279839, -6.9613185]]]] } },
+                { "type": "Feature", "properties": { "RW": "RW 04" }, "geometry": { "type": "MultiPolygon", "coordinates": [[[[110.44319923, -6.96263383], [110.44449329, -6.962351], [110.44457728, -6.96221827], [110.44809133, -6.96152305], [110.44821997, -6.96174648], [110.44835016, -6.96224323], [110.44553021, -6.96280419], [110.44337032, -6.96320948], [110.44319923, -6.96263383]]]] } }
+            ]
+        };
+
+        const dataPemerataan = { "01": { skor: 35, status: "Baik" }, "02": { skor: 36, status: "Baik Sekali" }, "03": { skor: 35, status: "Baik" }, "04": { skor: 31, status: "Cukup" }, "05": { skor: 36, status: "Baik Sekali" }, "06": { skor: 32, status: "Cukup" }, "07": { skor: 36, status: "Baik Sekali" }, "08": { skor: 35, status: "Baik" }, "09": { skor: 37, status: "Baik Sekali" }, "10": { skor: 36, status: "Baik Sekali" }, "Kawasan Industri": { skor: 0, status: "Kawasan Industri" } };
+        const dataPemerataanSMP = { "01": { skor: 22, status: "Cukup" }, "02": { skor: 24, status: "Baik Sekali" }, "03": { skor: 23, status: "Baik" }, "04": { skor: 22, status: "Cukup" }, "05": { skor: 24, status: "Baik Sekali" }, "06": { skor: 23, status: "Baik" }, "07": { skor: 22, status: "Cukup" }, "08": { skor: 22, status: "Cukup" }, "09": { skor: 24, status: "Baik Sekali" }, "10": { skor: 24, status: "Baik Sekali" }, "Kawasan Industri": { skor: 0, status: "Kawasan Industri" } };
+        const dataPemerataanSMA = { "01": { skor: 15, status: "Baik" }, "02": { skor: 16, status: "Baik Sekali" }, "03": { skor: 15, status: "Baik" }, "04": { skor: 15, status: "Baik" }, "05": { skor: 15, status: "Baik" }, "06": { skor: 15, status: "Baik" }, "07": { skor: 15, status: "Baik" }, "08": { skor: 15, status: "Baik" }, "09": { skor: 15, status: "Baik" }, "10": { skor: 15, status: "Baik" }, "Kawasan Industri": { skor: 0, status: "Kawasan Industri" } };
+
+        const dataKualitasSD = {
+            "MI HIDAYATUL MUBTADIIN": { skor: 1, ket: "Baik" },
+            "SD ISLAM AL FATTAH": { skor: 2, ket: "Baik Sekali" },
+            "SD IT ASSHODIQIYAH": { skor: 0, ket: "Cukup" },
+            "SD MUHAMMADIYAH 11": { skor: 1, ket: "Baik" },
+            "SD MUHAMMADIYAH 17": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI GAYAMSARI 01": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI GAYAMSARI 02": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI KALIGAWE": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI PANDEAN LAMPER 01": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI PANDEAN LAMPER 02": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI PANDEAN LAMPER 03": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI PANDEAN LAMPER 04": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI PANDEAN LAMPER 05": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI SAMBIREJO 01": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI SAMBIREJO 02": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI SAWAH BESAR 01": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI SAWAH BESAR 02": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI SIWALAN": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI TAMBAKREJO 01": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI TAMBAKREJO 02": { skor: 2, ket: "Baik Sekali" },
+            "SD NEGERI TAMBAKREJO 03": { skor: 1, ket: "Baik" },
+            "SD PANGUDI LUHUR VINCENTIUS": { skor: 2, ket: "Baik Sekali" }
+        };
+
+        const dataKualitasSMP = {
+            "SMP PGRI 1 SEMARANG": { skor: 2, ket: "Baik" },
+            "SMP AGUS SALIM": { skor: 3, ket: "Baik Sekali" },
+            "SMP PURNAMA 2": { skor: 3, ket: "Baik Sekali" },
+            "SMP NEGERI 04 SEMARANG": { skor: 3, ket: "Baik Sekali" },
+            "SMP MUHAMMADIYAH 7": { skor: 3, ket: "Baik Sekali" },
+            "SMP AL FATTAH": { skor: 3, ket: "Baik Sekali" },
+            "SMP ISLAM CAHAYA INSANI": { skor: 3, ket: "Baik Sekali" },
+            "SMP IT ASSHODIQIYAH": { skor: 3, ket: "Baik Sekali" }
+        };
+
+        const dataKualitasSMA = {
+            "SMA AGUS SALIM": { skor: 2, ket: "Baik" },
+            "SMA AL FATTAH": { skor: 1, ket: "Cukup" },
+            "SMA KESATRIAN 2": { skor: 2, ket: "Baik" },
+            "SMA Laboratorium UPGRIS": { skor: 2, ket: "Baik" },
+            "SMK ASSHODIQIYAH": { skor: 2, ket: "Baik" },
+            "SMK PELITA NUSANTARA 1": { skor: 2, ket: "Baik" },
+            "SMK PELITA NUSANTARA 2": { skor: 2, ket: "Baik" },
+            "SMK PERDANA": { skor: 2, ket: "Baik" }
+        };
+
+        const sd = [
+            { name: 'MI HIDAYATUL MUBTADIIN', NPSN: '60713841', lat: -6.993210, lng: 110.443048, type: 'Sekolah Dasar', akreditasi: 'B', info: 'JL. BADAK V PANDEAN LAMPER GAYAMSARI SEMARANG', image: 'https://mihidayatulmubtadiin-tasikmadu.sch.id/wp-content/uploads/elementor/thumbs/5132db231-scaled-p7haqiu6ow1s7ac8n07iks05kw7nirw6ou1jvog0lc.jpg', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 379', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 30-35', fasilitas: {laboratorium: 'TIK', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Tidak Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD ISLAM AL FATTAH', NPSN: '20329039', lat: -6.957515, lng: 110.444964, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Masjid Terboyo No 111', image: 'https://lh3.googleusercontent.com/blogger_img_proxy/AEn0k_sjWqWtWuIyQhUc1bNJGVhavcM0-Y7VazKYcKAcIocJuchuqM_9pIiyXOjZ-p5J9YNxXiG3wXv8RXgpsuI-BMIMLnu4NGdcO5G2xwX-kXlow6GcZeiSjGbscO3b-EKHiuP-=s0-d', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 270', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 23', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '09': 1, '10': 1} },
+            { name: 'SD IT ASSHODIQIYAH', NPSN: '69933468', lat: -6.962931, lng: 110.449572, type: 'Sekolah Dasar', akreditasi: 'C', info: 'JL. SAWAH BESAR TIMUR NO.99', image: 'https://img.laduni.id/uploads/post/2019/01-05/50926/15Kaligawe.jpg?p=medium', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 84', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 14', fasilitas: { laboratorium: 'TIK', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD MUHAMMADIYAH 11', NPSN: '20329350', lat: -6.972846, lng: 110.446882, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Jl Tambak Dalam I No 89', image: 'https://cdn-sekolah.annibuku.com/20329350/2.jpg', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 125', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 21', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD MUHAMMADIYAH 17', NPSN: '20329347', lat: -6.986585, lng: 110.445093, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Medoho Raya No 118 Rt. 03 Rw. 09', image: 'https://cdn-sekolah.annibuku.com/20329347/3.jpg', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 135', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 22', fasilitas: { laboratorium: 'Komputer', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI GAYAMSARI 01', NPSN: '20329385', lat: -7.001686, lng: 110.451476, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Beruang Raya', image: 'http://sdngayamsari01.dikdas.semarangkota.go.id/uploads/gallery/media/gerbang%20sdn%20gayamsari%2001.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 274', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 23', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD NEGERI GAYAMSARI 02', NPSN: '20329384', lat: -7.000758, lng: 110.447211, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Brigjend S Sudiarto No. 140', image: 'http://sdngayamsari02.dikdas.semarangkota.go.id/uploads/gallery/media/IMG_8968%20(1).jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 323', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 27', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD NEGERI KALIGAWE', NPSN: '20329226', lat: -6.966106, lng: 110.448422, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Tambakan I', image: 'https://cdn-sekolah.annibuku.com/20329226/4.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 311', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 26', fasilitas: { laboratorium: 'Komputer', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 1, '02': 1, '03': 4, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '09': 1, '10': 1} },
+            { name: 'SD NEGERI PANDEAN LAMPER 01', NPSN: '20337677', lat: -6.999883, lng: 110.444521, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Jl Brigjen Sudiarto 105', image: 'https://file.data.kemendikdasmen.go.id/sekolahkita/20/2032/20329266-4.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 316', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 26', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD NEGERI PANDEAN LAMPER 02', NPSN: '20328660', lat: -6.993245, lng: 110.442654, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Badak V', image: 'https://sdnpandeanlamper02.dikdas.semarangkota.go.id/uploads/gallery/media/gerbang%20sdn%20pl%2002.jpeg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 144', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 24', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 1, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD NEGERI PANDEAN LAMPER 03', NPSN: '20328659', lat: -6.996008, lng: 110.443126, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Badak Raya No. 59', image: 'https://assets.promediateknologi.id/crop/0x0:0x0/750x500/webp/photo/2023/02/06/2147819203.jpeg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 327', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 27', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0} },
+            { name: 'SD NEGERI PANDEAN LAMPER 04', NPSN: '20328656', lat: -6.995632, lng: 110.445511, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Banteng Utara VI', image: 'http://sdnpandeanlamper04.dikdas.semarangkota.go.id/uploads/gallery/media/IMG20210710080723_00.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 150', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 25', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '10': 0} },
+            { name: 'SD NEGERI PANDEAN LAMPER 05', NPSN: '20328654', lat: -6.991875, lng: 110.445676, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Jl. Gajah Barat IV', image: 'https://assets.kompasiana.com/items/album/2022/02/11/img-0112-620689871e0cba18b4377783.jpg?t=o&v=770s', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 330', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 1, '08': 0, '09': 1, '10': 1} },
+            { name: 'SD NEGERI SAMBIREJO 01', NPSN: '20328597', lat: -6.981914, lng: 110.442013, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Medoho Raya No. 9', image: 'https://cdn-sekolah.annibuku.com/20328597/2.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 330', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI SAMBIREJO 02', NPSN: '20328583', lat: -6.985240, lng: 110.446938, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Jolotundo II No. 27', image: 'https://cdn-sekolah.annibuku.com/20316203/3.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 168', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI SAWAH BESAR 01', NPSN: '20328574', lat: -6.974244, lng: 110.447695, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Jl Tambak Dalam Raya No 2', image: 'https://cdn-sekolah.annibuku.com/20328574/6.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 396', jumlah_rombel: 'Jumlah rombel: 14', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI SAWAH BESAR 02', NPSN: '20328573', lat: -6.970352, lng: 110.447146, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Margosari I', image: 'https://cdn-sekolah.annibuku.com/20328573/1.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 328', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI SIWALAN', NPSN: '20328544', lat: -6.975714, lng: 110.448869, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Karangingas Tengah', image: 'http://sdnsiwalan.dikdas.semarangkota.go.id/uploads/gallery/media/WhatsApp%20Image%202021-06-08%20at%2020.07.38%20(3)-1623085200.jpeg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 332', jumlah_rombel: 'Jumlah rombel: 12', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 28', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI TAMBAKREJO 01', NPSN: '20328571', lat: -6.957962, lng: 110.445306, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Jl. Masjid Terboyo', image: 'http://sdntambakrejo01.dikdas.semarangkota.go.id/uploads/gallery/media/gerbang%20sd%20tbk01.jpeg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 237', jumlah_rombel: 'Jumlah rombel: 10', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 24', fasilitas: {laboratorium: 'Tidak Ada', internet: 'Tidak Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI TAMBAKREJO 02', NPSN: '20328598', lat: -6.956942, lng: 110.442017, type: 'Sekolah Dasar', akreditasi: 'B', info: 'Purwosari Raya', image: 'https://cdn-sekolah.annibuku.com/20328598/3.jpg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 151', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 25', fasilitas: {laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD NEGERI TAMBAKREJO 03', NPSN: '20328650', lat: -6.955831, lng: 110.447488, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl Tenggang', image: 'http://sdntambakrejo03.dikdas.semarangkota.go.id/uploads/gallery/media/Gerbang-SD-Tambak-3.jpeg', status: 'Negeri', jumlah_siswa: 'Jumlah siswa: 116', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 19', fasilitas: {laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} },
+            { name: 'SD PANGUDI LUHUR VINCENTIUS', NPSN: '20329356', lat: -6.953916, lng: 110.441242, type: 'Sekolah Dasar', akreditasi: 'A', info: 'Jl. Purwosari Raya', image: 'https://cdn-sekolah.annibuku.com/20329356/2.jpg', status: 'Swasta', jumlah_siswa: 'Jumlah siswa: 108', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 18', fasilitas: {laboratorium: 'TIK', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada'}, rw_scores: {'01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1} }
+        ];
+
+        const smp = [
+            { name: 'SMP PGRI 1 SEMARANG', NPSN: '20331878', lat: -6.989649, lng: 110.4513378, type: 'Sekolah Menengah Pertama', akreditasi: 'A', status: 'Swasta', info: 'Jl. Kijang Selatan No.10-12 Semarang', image: 'https://www.smppgri1smg.sch.id/wp-content/uploads/2023/09/InShot_20230909_Foto-Gerbang-SMP-PGRI-1-SMG-930x620.jpg', jumlah_siswa: 'Jumlah siswa: 897', jumlah_rombel: 'Jumlah rombel: 7', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 41', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Tidak Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '09': 1, '10': 1 }, },
+            { name: 'SMP AGUS SALIM', NPSN: '20331837', lat: -7.0008359, lng: 110.4523823, type: 'Sekolah Menengah Pertama', akreditasi: 'A', status: 'Swasta', info: 'Jl. Beruang Raya No. 50', image: 'https://cdn-sekolah.annibuku.com/20331837/2.jpg', jumlah_siswa: 'Jumlah siswa: 242', jumlah_rombel: 'Jumlah rombel: 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 27', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Tidak Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+            { name: 'SMP PURNAMA 2', NPSN: '20328865', lat: -6.99454757, lng: 110.4494994, type: 'Sekolah Menengah Pertama', akreditasi: 'A', status: 'Swasta', info: 'Jl. Slamet Riyadi No.45', image: 'https://cdn-sekolah.annibuku.com/20328865/3.jpg', jumlah_siswa: 'Jumlah siswa: 191', jumlah_rombel: 'Jumlah rombel: 2 dan 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 27', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+            { name: 'SMP NEGERI 04 SEMARANG', NPSN: '20337597', lat: -6.974855485, lng: 110.4478949, type: 'Sekolah Menengah Pertama', akreditasi: 'A', status: 'Negeri', info: 'Jl. Tambak Dalam 1', image: 'https://cdn-sekolah.annibuku.com/20337597/2.jpg', jumlah_siswa: 'Jumlah siswa: 772', jumlah_rombel: 'Jumlah rombel: 8', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 32', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+            { name: 'SMP MUHAMMADIYAH 7', NPSN: '20328783', lat: -6.9729, lng: 110.44687, type: 'Sekolah Menengah Pertama', akreditasi: 'A', status: 'Swasta', info: 'Jl. Tambak Dalam Raya No. 89 Rt 3 Rw 3', image: 'https://spemuhven.school.blog/wp-content/uploads/2021/01/gedung.jpg?w=1024', jumlah_siswa: 'Jumlah siswa: 254', jumlah_rombel: 'Jumlah rombel: 2 dan 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 32', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+            { name: 'SMP AL FATTAH', NPSN: '20328956', lat: -6.957463324, lng: 110.4449988, type: 'Sekolah Menengah Pertama', akreditasi: 'B', status: 'Swasta', info: 'Jl. Masjid Terboyo No 111', image: 'https://assets.promediateknologi.id/crop/0x0:0x0/0x0/webp/photo/radarsidoarjo/2022/03/online.jpg', jumlah_siswa: 'Jumlah siswa: 218', jumlah_rombel: 'Jumlah rombel: 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 24', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } }, 
+            { name: 'SMP ISLAM CAHAYA INSANI', NPSN: '20331884', lat: -6.987624501, lng: 110.4444564, type: 'Sekolah Menengah Pertama', akreditasi: 'C', status: 'Swasta', info: 'Jl. Medoho Asri No. 3', image: 'https://vervalyayasan.data.kemdikbud.go.id/upload/file/38/384A/30916-8444342050459570420.jpg', jumlah_siswa: 'Jumlah siswa: 60', jumlah_rombel: 'Jumlah rombel: 1', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 20', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Tidak Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+            { name: 'SMP IT ASSHODIQIYAH', NPSN: '69762628', lat: -6.96260997, lng: 110.4496662, type: 'Sekolah Menengah Pertama', akreditasi: 'B', status: 'Swasta', info: 'Jl. Sawah Besar Timur No. 99', image: 'https://cdn-sekolah.annibuku.com/69762628/1.jpg', jumlah_siswa: 'Jumlah siswa: 52', jumlah_rombel: 'Jumlah rombel: 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 17-18', fasilitas: { laboratorium: 'TIK', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 }, },
+        ];
+
+        const sma = [
+            { name: 'SMA AGUS SALIM', NPSN: '220331893', lat: -7.000832, lng: 110.452378, type: 'Sekolah Menengah Atas', akreditasi: 'B', status: 'Swasta', info: 'Jl. Beruang Raya No. 50 Semarang', image: 'https://agussalim.id/wp-content/uploads/2024/02/peningkatan-1.png', jumlah_siswa: 'Jumlah siswa: 63', jumlah_rombel: 'Jumlah rombel: 3', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 21', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMA AL FATTAH', NPSN: '20331894', lat: -6.957438, lng: 110.444267, type: 'Sekolah Menengah Atas', akreditasi: 'B', status: 'Swasta', info: 'Jl. Masjid Terboyo No. III', image: 'https://cdn-sekolah.annibuku.com/20331894/1.jpg', jumlah_siswa: 'Jumlah siswa: 137', jumlah_rombel: 'Jumlah rombel: 5', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 40', fasilitas: { laboratorium: 'Tidak Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Tidak Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '09': 1, '10': 1 } },
+            { name: 'SMA KESATRIAN 2', NPSN: '20331904', lat: -6.982647, lng: 110.449415, type: 'Sekolah Menengah Atas', akreditasi: 'A', status: 'Swasta', info: 'Jl. Gajah Raya No. 58', image: 'https://cdn-sekolah.annibuku.com/20331904/1.jpg', jumlah_siswa: 'Jumlah siswa: 381', jumlah_rombel: 'Jumlah rombel: 11', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 30-35', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMA Laboratorium UPGRIS', NPSN: '20328929', lat: -6.983175, lng: 110.448647, type: 'SMA', akreditasi: 'A', status: 'Swasta', info: 'Jl. Gajah Raya No. 40', image: 'https://www.smppgri1smg.sch.id/wp-content/uploads/2024/10/UPGRIS.jpg', jumlah_siswa: 'Jumlah siswa: 366', jumlah_rombel: 'Jumlah rombel: 11', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 30-35', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 0, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMK ASSHODIQIYAH', NPSN: '20362087', lat:  -6.963223, lng: 110.449446, type: 'SMK', akreditasi: 'B', status: 'Swasta', info: 'Jl. Gajah Raya No. 40', image: 'https://img.laduni.id/uploads/post/2019/01-07/51011/SMK.jpg?p=medium', jumlah_siswa: 'Jumlah siswa: 32', jumlah_rombel: 'Jumlah rombel: 6', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 5', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMK PELITA NUSANTARA 1', NPSN: '20328967', lat: -6.995102, lng: 110.449136, type: 'SMK', akreditasi: 'A', status: 'Swasta', info: 'Jl. Slamet Riyadi No. 40', image: 'https://smkpns.sch.id/wp-content/uploads/2022/11/ezgif.com-gif-maker-6.webp', jumlah_siswa: 'Jumlah siswa: 953', jumlah_rombel: 'Jumlah rombel: 33', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 25-30', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMK PELITA NUSANTARA 2', NPSN: '20331931', lat: -6.994457, lng: 110.448422, type: 'SMK', akreditasi: 'A', status: 'Swasta', info: 'Jl. Slamet Riyadi No. 40', image: 'http://photos.wikimapia.org/p/00/04/47/45/99_1280.jpg', jumlah_siswa: 'Jumlah siswa: 956', jumlah_rombel: 'Jumlah rombel: 29', jumlah_siswa_per_kelas: 'Jumlah siswa per kelas: 30-35', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+            { name: 'SMK PERDANA', NPSN: '20328978', lat: -6.998532, lng: 110.448756, type: 'SMK', akreditasi: 'B', status: 'Swasta', info: 'Jl. Slamet Riyadi No. 10', image: 'https://smkperdanasmg.sch.id/storage/2025/05/WhatsApp-Image-2025-05-02-at-10.17.45_31280ffb.jpg', jumlah_siswa: 'Jumlah siswa: 256', jumlah_rombel: 'Jumlah rombel: 11', jumlah_siswa_per_kelas: '20-25', fasilitas: { laboratorium: 'Ada', internet: 'Ada', uks: 'Ada', perpustakaan: 'Ada', }, rw_scores: { '01': 1, '02': 1, '03': 1, '04': 1, '05': 1, '06': 1, '07': 1, '08': 1, '10': 1 } },
+        ];
+
+        const allSchools = [...sd, ...smp, ...sma];
+
+        const dataRW = [
+            { rw: '01', sd: 92, smp: 45, sma: 46, putus: 0, ket: "-", total_penduduk: 550 },
+            { rw: '02', sd: 20, smp: 12, sma: 12, putus: 0, ket: "-", total_penduduk: 1354 },
+            { rw: '03', sd: 104, smp: 55, sma: 35, putus: 4, ket: "4 faktor ekonomi", total_penduduk: 600 },
+            { rw: '04', sd: 0, smp: 0, sma: 0, putus: 0, ket: "-", total_penduduk: 450 },
+            { rw: '05', sd: 64, smp: 30, sma: 33, putus: 1, ket: "1 faktor ekonomi", total_penduduk: 400 },
+            { rw: '06', sd: 127, smp: 58, sma: 49, putus: 4, ket: "4 faktor ekonomi dan tunagrahita", total_penduduk: 800 },
+            { rw: '07', sd: 0, smp: 0, sma: 0, putus: 0, ket: "-", total_penduduk: 300 },
+            { rw: '08', sd: 0, smp: 0, sma: 0, putus: 0, ket: "-", total_penduduk: 744 },
+            { rw: '09', sd: 66, smp: 31, sma: 31, putus: 0, ket: "-", total_penduduk: 605 },
+            { rw: '10', sd: 90, smp: 42, sma: 26, putus: 0, ket: "-", total_penduduk: 636 },
+        ];
+
+
+        const sdGroup = L.layerGroup().addTo(map); 
+        const smpGroup = L.layerGroup().addTo(map); 
+        const smaGroup = L.layerGroup().addTo(map); 
+
+        // ======================== PEWARNAAN RW ========================
+        function getRWColor(kode) {
+            if (!kode) return '#666666'; 
+            let str = String(kode).replace(/RW/i, '').trim().toUpperCase();
+            const colorMap = {
+                '1': '#FF5733', '01': '#FF5733', '2': '#33FF57', '02': '#33FF57',
+                '3': '#3357FF', '03': '#3357FF', '4': '#F3FF33', '04': '#F3FF33',
+                '5': '#FF33F6', '05': '#FF33F6', '6': '#33FFF6', '06': '#33FFF6',
+                '7': '#FFA500', '07': '#FFA500', '8': '#800000', '08': '#800000',
+                '9': '#008080', '09': '#008080', '10': '#808000'
+            };
+            if (colorMap[str]) return colorMap[str];
+            if (str.includes('INDUSTRI') || str.includes('KAWASAN')) return '#2c3e50'; 
+            return '#999999'; 
+        }
+
+        function styleRW(feature) {
+            const kodeRW = feature.properties.rw || feature.properties.RW || feature.properties.no_rw || feature.properties.WADMKC || feature.properties.Name || "0";
+            return { fillColor: getRWColor(kodeRW), weight: 2, opacity: 1, color: 'white', dashArray: '3', fillOpacity: 0.6 };
+        }
+
+        // ======================== PEWARNAAN PEMERATAAN (SHARED) ========================
+        
+        function getPemerataanColor(status) {
+            switch (status) {
+                case 'Baik Sekali': return 'rgb(202, 252, 202)'; // Hijau Pastel
+                case 'Baik': return 'rgb(186, 222, 252)';        // Biru Pastel
+                case 'Cukup': return 'rgb(255, 235, 175)';       // Kuning Pastel
+                default: return 'rgb(243, 182, 252)';            // Ungu Pastel (Kawasan Industri / Default)
+            }
+        }
+
+        // ------------------ LAYER SD ------------------
+        function stylePemerataan(feature) {
+            const rawRW = feature.properties.RW || feature.properties.rw || "0";
+            let rwKey = String(rawRW).replace(/RW/i, '').trim();
+            if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey; 
+            if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+            const data = dataPemerataan[rwKey] || { status: '-' };
+
+            return {
+                fillColor: getPemerataanColor(data.status),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.85
+            };
+        }
+
+        function loadPemerataanLayer() {
+            pemerataanLayer = L.geoJson(geoJsonDataRW, {
+                style: stylePemerataan,
+                onEachFeature: function (feature, layer) {
+                    const rawRW = feature.properties.RW || feature.properties.rw || "";
+                    let rwKey = String(rawRW).replace(/RW/i, '').trim();
+                    if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey;
+                    if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+                    let labelText = "";
+                    if(String(rawRW).toLowerCase().includes('industri')) { labelText = "Kawasan Industri"; } 
+                    else { labelText = isNaN(rawRW) ? rawRW : "RW " + rawRW; }
+
+                    layer.bindTooltip(labelText, { permanent: true, direction: "center", className: "label-rw-text" });
+
+                    const data = dataPemerataan[rwKey] || { skor: 0, status: "-" };
+
+                    layer.bindPopup(`
+                        <div style="text-align: center;">
+                            <h4 style="margin:0; color:#d35400;">${rawRW} (SD)</h4>
+                            <hr style="margin: 5px 0;">
+                            <b>Skor Pemerataan:</b> <span style="font-size:14px;">${data.skor}</span><br>
+                            <b>Status:</b> <br>
+                            <span style="background:${getPemerataanColor(data.status)}; color:#333; padding:2px 6px; border-radius:4px; font-weight:bold;">
+                                ${data.status}
+                            </span>
+                        </div>
+                    `);
+                     layer.on('mouseover', function (e) { layer.setStyle({ weight: 4, color: '#f97373', fillOpacity: 1.0 }); layer.bringToFront(); });
+                     layer.on('mouseout', function (e) { pemerataanLayer.resetStyle(e.target); });
+                }
+            });
+        }
+
+        // ------------------ LAYER SMP ------------------
+        function stylePemerataanSMP(feature) {
+            const rawRW = feature.properties.RW || feature.properties.rw || "0";
+            let rwKey = String(rawRW).replace(/RW/i, '').trim();
+            if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey; 
+            if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+            const data = dataPemerataanSMP[rwKey] || { status: '-' };
+
+            return {
+                fillColor: getPemerataanColor(data.status),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.85
+            };
+        }
+
+        function loadPemerataanSMPLayer() {
+            pemerataanSMPLayer = L.geoJson(geoJsonDataRW, {
+                style: stylePemerataanSMP,
+                onEachFeature: function (feature, layer) {
+                    const rawRW = feature.properties.RW || feature.properties.rw || "";
+                    let rwKey = String(rawRW).replace(/RW/i, '').trim();
+                    if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey;
+                    if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+                    let labelText = "";
+                    if(String(rawRW).toLowerCase().includes('industri')) { labelText = "Kawasan Industri"; } 
+                    else { labelText = isNaN(rawRW) ? rawRW : "RW " + rawRW; }
+
+                    layer.bindTooltip(labelText, { permanent: true, direction: "center", className: "label-rw-text" });
+
+                    const data = dataPemerataanSMP[rwKey] || { skor: 0, status: "-" };
+
+                    layer.bindPopup(`
+                        <div style="text-align: center;">
+                            <h4 style="margin:0; color:#000080;">${rawRW} (SMP)</h4>
+                            <hr style="margin: 5px 0;">
+                            <b>Skor Pemerataan:</b> <span style="font-size:14px;">${data.skor}</span><br>
+                            <b>Status:</b> <br>
+                            <span style="background:${getPemerataanColor(data.status)}; color:#333; padding:2px 6px; border-radius:4px; font-weight:bold;">
+                                ${data.status}
+                            </span>
+                        </div>
+                    `);
+                     layer.on('mouseover', function (e) { layer.setStyle({ weight: 4, color: '#f97373', fillOpacity: 1.0 }); layer.bringToFront(); });
+                     layer.on('mouseout', function (e) { pemerataanSMPLayer.resetStyle(e.target); });
+                }
+            });
+        }
+
+        // ------------------ LAYER SMA/SMK ------------------
+        function stylePemerataanSMA(feature) {
+            const rawRW = feature.properties.RW || feature.properties.rw || "0";
+            let rwKey = String(rawRW).replace(/RW/i, '').trim();
+            if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey; 
+            if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+            const data = dataPemerataanSMA[rwKey] || { status: '-' };
+
+            return {
+                fillColor: getPemerataanColor(data.status),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.85
+            };
+        }
+
+        function loadPemerataanSMALayer() {
+            pemerataanSMALayer = L.geoJson(geoJsonDataRW, {
+                style: stylePemerataanSMA,
+                onEachFeature: function (feature, layer) {
+                    const rawRW = feature.properties.RW || feature.properties.rw || "";
+                    let rwKey = String(rawRW).replace(/RW/i, '').trim();
+                    if(rwKey.length === 1 && !isNaN(rwKey)) rwKey = "0" + rwKey;
+                    if(rawRW.includes("Industri")) rwKey = "Kawasan Industri";
+
+                    let labelText = "";
+                    if(String(rawRW).toLowerCase().includes('industri')) { labelText = "Kawasan Industri"; } 
+                    else { labelText = isNaN(rawRW) ? rawRW : "RW " + rawRW; }
+
+                    layer.bindTooltip(labelText, { permanent: true, direction: "center", className: "label-rw-text" });
+
+                    const data = dataPemerataanSMA[rwKey] || { skor: 0, status: "-" };
+
+                    layer.bindPopup(`
+                        <div style="text-align: center;">
+                            <h4 style="margin:0; color:#74AED4;">${rawRW} (SMA/SMK)</h4>
+                            <hr style="margin: 5px 0;">
+                            <b>Skor Pemerataan:</b> <span style="font-size:14px;">${data.skor}</span><br>
+                            <b>Status:</b> <br>
+                            <span style="background:${getPemerataanColor(data.status)}; color:#333; padding:2px 6px; border-radius:4px; font-weight:bold;">
+                                ${data.status}
+                            </span>
+                        </div>
+                    `);
+                     layer.on('mouseover', function (e) { layer.setStyle({ weight: 4, color: '#f97373', fillOpacity: 1.0 }); layer.bringToFront(); });
+                     layer.on('mouseout', function (e) { pemerataanSMALayer.resetStyle(e.target); });
+                }
+            });
+        }
+        
+        loadPemerataanLayer(); 
+        loadPemerataanSMPLayer();
+        loadPemerataanSMALayer();
+
+        // ======================== FUNGSI UTAMA & FILTER BARU ========================
+        
+        function getSchoolColor(type) {
+            switch(type) { 
+                case 'Sekolah Dasar': return '#e74c3c'; 
+                case 'Sekolah Menengah Pertama': return '#000080'; 
+                case 'Sekolah Menengah Atas': case 'SMK': case 'MA': return '#74AED4'; 
+                default: return '#95a5a6'; 
+            }
+        }
+
+        const formatFasilitas = (fasilitas) => {
+            if (typeof fasilitas === 'object' && fasilitas !== null) {
+                return Object.entries(fasilitas)
+                    .map(([key, value]) => `• ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+                    .join("<br>");
+            }
+            return 'Tidak Ada Data'; 
+        };
+
+        // --- CORE: FILTER & RENDER MARKERS ---
+        function refreshMarkers() {
+            // Get Checkbox States
+            const showSD = document.getElementById('sdLayer').checked;
+            const showSMP = document.getElementById('smpLayer').checked;
+            const showSMA = document.getElementById('smaLayer').checked;
+            
+            // Get Dropdown Value
+            const statusFilter = document.getElementById('statusFilter').value; // 'all', 'Negeri', 'Swasta'
+
+            sdGroup.clearLayers();
+            smpGroup.clearLayers();
+            smaGroup.clearLayers();
+
+            const createMarker = (school, groupLayer) => {
+                // Filter by Status (Dropdown)
+                if (statusFilter !== 'all' && school.status !== statusFilter) return;
+
+                const marker = L.circleMarker([school.lat, school.lng], {
+                    radius: 8, 
+                    fillColor: getSchoolColor(school.type), 
+                    color: '#fff', 
+                    weight: 2, 
+                    opacity: 1, 
+                    fillOpacity: 0.8,
+                    pane: 'schoolPane'
+                }).addTo(groupLayer);
+
+                school.marker = marker; 
+
+                // --- LOGIC POPUP UPDATED (INDEKS KUALITAS) ---
+                let kualitasBadge = "";
+                // Cek data kualitas dari semua jenjang
+                const k = dataKualitasSD[school.name] || dataKualitasSMP[school.name] || dataKualitasSMA[school.name];
+
+                if (k) {
+                    // Tentukan warna teks berdasarkan keterangan (Sesuai legenda baru)
+                    let color = '#333';
+                    if(k.ket === 'Baik Sekali') color = '#2ecc71'; // Hijau (Green)
+                    else if(k.ket === 'Baik') color = '#f1c40f';   // Kuning (Yellow)
+                    else if(k.ket === 'Cukup') color = '#e67e22';  // Oranye (Orange)
+                    else color = '#e74c3c';                        // Merah (Default/Fallback)
+
+                    kualitasBadge = `
+                    <div style="margin: 5px 0; border-top:1px dashed #ccc; padding-top:4px; font-size:11px;">
+                        <b style="color:#555;">Indeks Kualitas:</b> <br>
+                        <span style="color:${color}; font-weight:bold; font-size:12px; text-shadow: 0px 0px 1px rgba(0,0,0,0.1);">${k.ket} (Skor: ${k.skor})</span>
+                    </div>`;
+                }
+
+                marker.bindPopup(`
+                    <div style="text-align:left; max-width:180px; font-size:11px; line-height:1.2;">
+                        <h4 style="margin:0 0 2px 0; font-size:12px;">${school.name}</h4>
+                        <img src="${school.image}" alt="Foto ${school.name}" style="width:100%; border-radius:2px; margin-bottom:4px;">
+                        <p><b>NPSN:</b> ${school.NPSN ?? '-'}</p>
+                        <p><b>Status:</b> ${school.status ?? '-'}</p>
+                        <p><b>Akreditasi:</b> ${school.akreditasi ?? '-'}</p>
+                        ${kualitasBadge} <p><b>Alamat:</b> ${school.info ?? '-'}</p>
+                        <hr style="border: 0; border-top: 1px solid rgba(255, 165, 0, 0.3); margin: 4px 0;">
+                        <p>${school.jumlah_siswa ?? '-'}</p>
+                        <p>${school.jumlah_rombel ?? '-'}</p>
+                        <p>${school.jumlah_siswa_per_kelas ?? '-'}</p>
+                        <hr style="border: 0; border-top: 1px solid rgba(255, 165, 0, 0.3); margin: 4px 0;">
+                        <p><b>Fasilitas:</b><br><span style="margin-left: 5px;">${formatFasilitas(school.fasilitas)}</span></p>
+                        <p style="font-size:12px; margin-top:8px;"><b>Koordinat:</b><br>Lat: ${school.lat.toFixed(6)}<br>Lng: ${school.lng.toFixed(6)}</p>
+                    </div>
+                `);
+            };
+
+            if (showSD) sd.forEach(s => createMarker(s, sdGroup));
+            if (showSMP) smp.forEach(s => createMarker(s, smpGroup));
+            if (showSMA) sma.forEach(s => createMarker(s, smaGroup));
+        }
+
+        document.getElementById('sdLayer').addEventListener('change', refreshMarkers);
+        document.getElementById('smpLayer').addEventListener('change', refreshMarkers);
+        document.getElementById('smaLayer').addEventListener('change', refreshMarkers);
+
+        refreshMarkers();
+
+        // ======================== GEOJSON & SEARCH ========================
+
+        window.openSchoolPopup = function(schoolName) {
+            const school = allSchools.find(s => s.name === schoolName);
+            if (school && school.marker && map.hasLayer(school.marker)) {
+                map.setView([school.lat, school.lng], 17);
+                school.marker.openPopup();
+            } else if (school) {
+                alert("Sekolah ditemukan, tetapi sedang disembunyikan oleh Filter Peta.");
+            } else {
+                alert("Sekolah tidak ditemukan.");
+            }
+        };
+
+        function loadGeoJsonRW() {
+            try {
+                const geojsonData = geoJsonDataRW;
+                
+                geojsonData.features.forEach(f => {
+                    let rwProperty = String(f.properties.RW || f.properties.rw || f.properties.Name || '').replace('RW ', '').trim();
+                    const rw = rwProperty.padStart(2, '0');
+                    const data = dataRW.find(d => d.rw === rw);
+                    f.properties.sd = data?.sd ?? 0; f.properties.smp = data?.smp ?? 0; f.properties.sma = data?.sma ?? 0;
+                    f.properties.putus = data?.putus ?? 0; f.properties.ket = data?.ket ?? "-"; f.properties.total_penduduk = data?.total_penduduk ?? 'N/A';
+
+                    const schoolsByJenjang = { sd: [], smp: [], sma: [] };
+                    allSchools.forEach(school => {
+                        const score = school.rw_scores[rw] ?? 0; 
+                        if (score > 0) { 
+                            let jenjang = school.type === 'Sekolah Dasar' ? 'sd' : school.type === 'Sekolah Menengah Pertama' ? 'smp' : 'sma';
+                            schoolsByJenjang[jenjang].push(school.name);
+                        }
+                    });
+                    f.properties.sekolah_jenjang = schoolsByJenjang;
+                });
+
+                kaligaweLayer = L.geoJson(geojsonData, {
+                    style: styleRW,
+                    onEachFeature: function(feature, layer) {
+                        const rawRW = feature.properties.RW || feature.properties.rw || "0";
+                        let rwLabel = isNaN(rawRW) && !rawRW.includes("RW") ? rawRW : "RW " + String(rawRW).replace("RW", "").trim();
+                        if(String(rawRW).toLowerCase().includes('industri')) rwLabel = "Kawasan Industri";
+
+                        layer.bindTooltip(rwLabel, {
+                            permanent: true,
+                            direction: "center",
+                            className: "label-rw-text"
+                        });
+
+                        const p = feature.properties;
+                        // Build list of schools text
+                        let listSD = p.sekolah_jenjang.sd.length > 0 ? p.sekolah_jenjang.sd.map(n => `<span class="school-link" onclick="openSchoolPopup('${n}')">${n}</span>`).join("<br>") : "-";
+                        let listSMP = p.sekolah_jenjang.smp.length > 0 ? p.sekolah_jenjang.smp.map(n => `<span class="school-link" onclick="openSchoolPopup('${n}')">${n}</span>`).join("<br>") : "-";
+                        let listSMA = p.sekolah_jenjang.sma.length > 0 ? p.sekolah_jenjang.sma.map(n => `<span class="school-link" onclick="openSchoolPopup('${n}')">${n}</span>`).join("<br>") : "-";
+
+                        layer.bindPopup(`
+                            <div style="text-align:center; min-width:200px;">
+                                <h3 style="color:#e67e22; margin-bottom:5px;">${rwLabel}</h3>
+                                <div style="text-align:left; font-size:12px;">
+                                    <p><b>Total Penduduk:</b> ${p.total_penduduk}</p>
+                                    <p><b>Anak Putus Sekolah:</b> ${p.putus} jiwa</p>
+                                    <p><b>Keterangan:</b> ${p.ket}</p>
+                                    <hr style="margin:5px 0; border:0; border-top:1px solid #ddd;">
+                                    <p><b>Partisipasi SD:</b> ${p.sd} siswa</p>
+                                    <div style="margin-left:8px; margin-bottom:4px; font-size:11px; color:#555;">${listSD}</div>
+                                    
+                                    <p><b>Partisipasi SMP:</b> ${p.smp} siswa</p>
+                                    <div style="margin-left:8px; margin-bottom:4px; font-size:11px; color:#555;">${listSMP}</div>
+                                    
+                                    <p><b>Partisipasi SMA/SMK:</b> ${p.sma} siswa</p>
+                                    <div style="margin-left:8px; margin-bottom:4px; font-size:11px; color:#555;">${listSMA}</div>
+                                </div>
+                            </div>
+                        `);
+
+                        layer.on('mouseover', function(e) {
+                            this.setStyle({ weight: 4, fillOpacity: 0.8 });
+                        });
+                        layer.on('mouseout', function(e) {
+                            kaligaweLayer.resetStyle(this);
+                        });
+                    }
+                }).addTo(map);
+
+                // Event listener untuk layer RW
+                document.getElementById('kaligaweGeoJsonLayer').addEventListener('change', function(e) {
+                    if(e.target.checked) map.addLayer(kaligaweLayer);
+                    else map.removeLayer(kaligaweLayer);
+                });
+
+                // Event Listeners untuk Layer Pemerataan
+                document.getElementById('pemerataanLayerInput').addEventListener('change', function(e) {
+                    if(e.target.checked) {
+                        map.addLayer(pemerataanLayer);
+                        if(map.hasLayer(kaligaweLayer)) kaligaweLayer.bringToFront();
+                    } else {
+                        map.removeLayer(pemerataanLayer);
+                    }
+                });
+                
+                document.getElementById('pemerataanSMPLayerInput').addEventListener('change', function(e) {
+                    if(e.target.checked) {
+                        map.addLayer(pemerataanSMPLayer);
+                        if(map.hasLayer(kaligaweLayer)) kaligaweLayer.bringToFront();
+                    } else {
+                        map.removeLayer(pemerataanSMPLayer);
+                    }
+                });
+
+                document.getElementById('pemerataanSMALayerInput').addEventListener('change', function(e) {
+                    if(e.target.checked) {
+                        map.addLayer(pemerataanSMALayer);
+                        if(map.hasLayer(kaligaweLayer)) kaligaweLayer.bringToFront();
+                    } else {
+                        map.removeLayer(pemerataanSMALayer);
+                    }
+                });
+
+                // Default state: remove pemerataan layers initially (biar bersih)
+                map.removeLayer(pemerataanLayer);
+                map.removeLayer(pemerataanSMPLayer);
+                map.removeLayer(pemerataanSMALayer);
+
+
+            } catch (error) {
+                console.error("Error processing GeoJSON:", error);
+            }
+        }
+
+        // Jalankan fungsi load data
+        loadGeoJsonRW();
+
+        function searchSchool() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const school = allSchools.find(s => s.name.toLowerCase().includes(input));
+            
+            if (school) {
+                if (school.marker) {
+                    // Pastikan layer grup sekolah aktif sebelum zoom
+                    const group = school.type === 'Sekolah Dasar' ? sdGroup :
+                                  school.type === 'Sekolah Menengah Pertama' ? smpGroup : smaGroup;
+                    
+                    if(!map.hasLayer(group)) {
+                         map.addLayer(group);
+                         // Centang checkbox terkait jika belum
+                         if(school.type === 'Sekolah Dasar') document.getElementById('sdLayer').checked = true;
+                         else if(school.type === 'Sekolah Menengah Pertama') document.getElementById('smpLayer').checked = true;
+                         else document.getElementById('smaLayer').checked = true;
+                    }
+
+                    map.setView([school.lat, school.lng], 18);
+                    school.marker.openPopup();
+                }
+            } else {
+                alert('Sekolah tidak ditemukan!');
+            }
+        }
+
+        // ======================== FIX ZOOM FUNCTION ========================
+        // Dibuat global dengan menempel ke window agar bisa diakses tombol HTML
+        window.zoomToKaligawe = function() {
+            map.flyTo([-6.962262, 110.448152], 15, {
+                animate: true,
+                duration: 1.5 // efek animasi zoom halus
+            });
+        };
+
+        // Cegah klik pada tombol agar tidak tembus ke peta (Leaflet bug prevention)
+        const controlContainer = document.querySelector('.map-controls');
+        if(controlContainer) {
+            L.DomEvent.disableClickPropagation(controlContainer);
+        }
+
+    </script>
+</body>
+</html>
